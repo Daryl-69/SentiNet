@@ -29,7 +29,8 @@ def scenario():
     ("Infilteration", LATERAL), ("Infiltration", LATERAL), ("Bot", C2), ("DDoS attacks-LOIC-HTTP", IMPACT),
     ("DoS Hulk", IMPACT), ("flow=Background-UDP-Established", BENIGN), ("flow=From-Normal-V42-Stribrny", BENIGN),
     ("flow=From-Botnet-V42-TCP-CC6-Plain-HTTP-Encrypted-Data", C2), ("Reconnaissance", RECON), ("Exploits", INITIAL_ACCESS),
-    ("Worms", LATERAL), ("Backdoor", C2), ("stage:5:x:y", 5), ("", BENIGN),
+    ("Worms", LATERAL), ("Backdoor", C2), ("Web Attack - Brute Force - Attempted", RECON),
+    ("Infiltration - Attempted", RECON), ("stage:5:x:y", 5), ("", BENIGN),
 ])
 def test_label_mapping(label, stage):
     assert label_to_stage(label) == stage

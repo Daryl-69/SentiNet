@@ -52,6 +52,8 @@ _RULES = [
     # benign / background
     (r"^(benign|normal|background|0|false|-)$", BENIGN),
     (r"flow=(background|to-background|from-background|from-normal|to-normal|normal)", BENIGN),
+    # Distrinet / improved CIC-IDS2017: failed attempts ("... - Attempted") never got in -> treat as recon
+    (r"attempted", RECON),
     # our own synthetic labels "stage:<n>:..." are handled before the rules
     # CIC-IDS2017 / CSE-CIC-IDS2018
     (r"portscan|port scan|reconnaissance|fuzzers|analysis|scan", RECON),
