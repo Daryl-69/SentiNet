@@ -1,4 +1,4 @@
-# SentiNet (NetSentinel Foresight): architecture
+# SentiNet: architecture
 
 **Problem statement SIH26153:** AI-based network attack forecasting from network traffic data (NTRO).
 **Idea:** do not classify single flows. Learn how the *state of the network* evolves over time, a world model

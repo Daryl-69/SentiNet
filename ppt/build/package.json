@@ -1,6 +1,6 @@
 {
-  "name": "netsentinel-sih26153-deck",
+  "name": "sentinet-sih26153-deck",
   "private": true,
-  "scripts": { "build": "node deck.js ../NetSentinel_SIH26153.pptx" },
+  "scripts": { "build": "node deck.js ../SentiNet_SIH26153.pptx" },
   "dependencies": { "pptxgenjs": "^3.12.0", "react-icons": "^5.0.0", "react": "^18.0.0", "react-dom": "^18.0.0", "sharp": "^0.33.0", "jszip": "^3.10.0" }
 }

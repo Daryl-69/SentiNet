@@ -67,7 +67,7 @@ def run_pipeline(path: str, fmt: str, labels: str | None, samples: int, assets: 
 # ------------------------------------------------------------------- sidebar
 with st.sidebar:
     st.title("🛡️ SentiNet")
-    st.caption("NetSentinel Foresight: a world model that forecasts network attacks from traffic, "
+    st.caption("A world model that forecasts network attacks from traffic, "
                "before the attacker completes the kill chain.")
     src = st.radio("Input", list(SAMPLES) + ["Upload a PCAP / CSV"], index=0)
     fmt, labels_path, path = "auto", None, None

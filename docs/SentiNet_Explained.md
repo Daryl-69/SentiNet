@@ -28,7 +28,7 @@ critical-infrastructure networks: power grids, banks, telecom, government.
 > inside in the next 10 minutes, they are in the reconnaissance stage now, this is the server they will hit, and this is
 > why."*
 
-The product name on our slides is **NetSentinel Foresight**. The code repository is called **SentiNet**.
+The product, the slides and the code repository are all called **SentiNet**.
 
 ## 3. How it works, in plain words
 
@@ -314,7 +314,7 @@ For the command line, see the [README](../README.md).
 | `README.md` | Setup and full results |
 | `docs/ARCHITECTURE.md` | 2-page architecture document (SIH deliverable) |
 | `docs/SentiNet_Explained.md` | This file |
-| `ppt/NetSentinel_SIH26153.pptx` / `.pdf` | The idea-submission deck |
+| `ppt/SentiNet_SIH26153.pptx` / `.pdf` | The idea-submission deck |
 | `app.py` | The web app |
 | `sentinet/` | All the code: loaders, features, model, engine, knowledge base, ledger, simulator |
 | `weights/` | The trained model |

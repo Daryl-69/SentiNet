@@ -3,7 +3,7 @@ const path = require('path');
 const { icon } = require('./icons');
 
 const IMG = path.join(__dirname, '..', 'img');
-const OUT = process.argv[2] || 'NetSentinel_SIH26153.pptx';
+const OUT = process.argv[2] || 'SentiNet_SIH26153.pptx';
 
 // palette lifted from the old deck
 const NAVY = '1F3B64', NAVY2 = '153E66', BODY = '3A4655', MUTED = '55606B', RED = 'B03A36';
@@ -13,7 +13,7 @@ const SERIF = 'Times New Roman', SANS = 'Calibri';
 
 const pres = new pptxgen();
 pres.layout = 'LAYOUT_WIDE'; // 13.333 x 7.5, same as the old deck (960 x 540 pt)
-pres.title = 'NetSentinel Foresight — SIH26153';
+pres.title = 'SentiNet — SIH26153';
 
 function T(slide, text, o) {
   slide.addText(text, Object.assign({ isTextBox: true, margin: 0, fontFace: SANS, color: BODY, valign: 'top' }, o));
@@ -77,7 +77,7 @@ const lead = (b, t, br = false, c = RED) => [{ text: b, options: { bold: true, c
     header(s, null);
     s.addImage({ path: path.join(IMG, 'i63.png'), x: 2.28, y: 0.08, w: 0.6, h: 0.63 });
     s.addImage({ path: path.join(IMG, 'i65.png'), x: 2.35, y: 0.15, w: 0.46, h: 0.49 });
-    T(s, 'NetSentinel Foresight : A World Model that Forecasts Network Attacks', { x: 2.95, y: 0.12, w: 8.9, h: 0.55, fontFace: SERIF, bold: true, fontSize: 20, color: NAVY, valign: 'middle' });
+    T(s, 'SentiNet : A World Model that Forecasts Network Attacks', { x: 2.95, y: 0.12, w: 8.9, h: 0.55, fontFace: SERIF, bold: true, fontSize: 20, color: NAVY, valign: 'middle' });
     box(s, 0.42, 0.8, 12.5, 0.4, 'EAF1F8', 'B4C7DC');
     T(s, 'Enterprise & Critical Information Infrastructure  |  Learns P(Sₜ₊₁ | Sₜ)  |  K-step attack forecasting  |  MITRE ATT&CK stages  |  SHAP + attention explanations  |  Runs fully offline',
       { x: 0.5, y: 0.8, w: 12.35, h: 0.4, fontFace: SERIF, bold: true, fontSize: 11.5, color: '1B2A3A', align: 'center', valign: 'middle' });
@@ -88,7 +88,7 @@ const lead = (b, t, br = false, c = RED) => [{ text: b, options: { bold: true, c
     box(s, 0.52, 1.8, 5.93, 0.82, DARK, DARK, { round: 0.06 });
     T(s, [
       { text: 'Intrusion detectors tell you a breach has happened. ' },
-      { text: 'NetSentinel Foresight tells you where the attacker is going next, ', options: { color: YEL } },
+      { text: 'SentiNet tells you where the attacker is going next, ', options: { color: YEL } },
       { text: 'while the attacker is still scanning and there is still time to stop them.', options: { underline: { style: 'sng' } } },
     ], { x: 0.64, y: 1.84, w: 5.7, h: 0.74, fontSize: 12.5, bold: true, color: WHITE, valign: 'middle' });
 
@@ -160,7 +160,7 @@ const lead = (b, t, br = false, c = RED) => [{ text: b, options: { bold: true, c
     box(s, 0.3, 1.02, 6.15, 4.08, WHITE, '5B7BA3', { lw: 1 });
     const B = (b, t) => [{ text: b, options: { bold: true, bullet: true } }, { text: t, options: { breakLine: true } }];
     T(s, [
-      { text: 'NetSentinel Foresight learns ' }, { text: 'how network state changes', options: { bold: true } },
+      { text: 'SentiNet learns ' }, { text: 'how network state changes', options: { bold: true } },
       { text: '. An encoder turns each time window into a state, a dynamics model learns ' }, { text: 'P(Sₜ₊₁ | Sₜ)', options: { bold: true } },
       { text: ', and a rollout engine simulates K steps ahead.', options: { breakLine: true } },
       ...B('State Sₜ (every 60 s window): ', 'a graph with hosts as nodes and flows as edges. Flow-level features: TCP flag counts (SYN/ACK/FIN/RST/PSH/URG), bytes, packets, duration, IAT mean/var/max, bidirectional ratio. Packet-level features: TTL mean and variance, TCP window size, fragment flags, payload-size histogram, sequential vs random port order, retransmissions.'),
@@ -171,7 +171,7 @@ const lead = (b, t, br = false, c = RED) => [{ text: b, options: { bold: true, c
     ], { x: 0.42, y: 1.08, w: 5.93, h: 3.98, fontFace: SERIF, fontSize: 12, color: '000000', paraSpaceAfter: 3 });
 
     // tech stack
-    heading(s, 'NETSENTINEL TECH STACK', 6.6, 0.68, 6.5, { fontSize: 17 });
+    heading(s, 'SENTINET TECH STACK', 6.6, 0.68, 6.5, { fontSize: 17 });
     const pills = [['Technology', '2F4F4F', WHITE], ['Python 3.11', 'C9E3A6'], ['PyTorch + PyG', 'F3F09B'], ['Scapy / PyShark', 'E9D8B4'], ['CICFlowMeter', 'D9D2E9'], ['SHAP / Captum', 'F4CCCC'], ['ONNX', 'C9DAF8'], ['Streamlit', 'B7E1CD']];
     let px = 6.62;
     pills.forEach(([t, c, fc]) => {
@@ -313,14 +313,14 @@ const lead = (b, t, br = false, c = RED) => [{ text: b, options: { bold: true, c
     const s = pres.addSlide();
     header(s, 'IMPACT & BENEFITS');
     box(s, 0.3, 0.6, 6.45, 3.12, WHITE, GREYB, { lw: 1 });
-    heading(s, 'NETSENTINEL VS. EXISTING TOOLS', 0.3, 0.63, 6.45, { fontSize: 16 });
+    heading(s, 'SENTINET VS. EXISTING TOOLS', 0.3, 0.63, 6.45, { fontSize: 16 });
     const G = '2E7D32', R = 'C00000';
     const hc = (t) => ({ text: t, options: { bold: true, color: '1B2A3A', fill: { color: WHITE }, align: 'center' } });
     const cell = (t, c = BODY, b = false, fill) => ({ text: t, options: Object.assign({ color: c, bold: b, align: 'center' }, fill ? { fill: { color: fill } } : {}) });
     const NS = 'EAF1F8';
     const rows = [
       [{ text: 'Capability', options: { bold: true, color: '1B2A3A', fill: { color: WHITE } } }, hc('Forecasts next stage'), hc('Learns time dynamics'), hc('ATT&CK stage mapping'), hc('Explains each output'), hc('Works offline')],
-      [{ text: 'NetSentinel Foresight', options: { bold: true, color: NAVY2, fontSize: 10, fill: { color: NS } } }, cell('Yes: K-step probability', G, true, NS), cell('Yes: world model', G, true, NS), cell('Yes, per forecast', G, true, NS), cell('Yes: SHAP + attention', G, true, NS), cell('Yes', G, true, NS)],
+      [{ text: 'SentiNet', options: { bold: true, color: NAVY2, fontSize: 10, fill: { color: NS } } }, cell('Yes: K-step probability', G, true, NS), cell('Yes: world model', G, true, NS), cell('Yes, per forecast', G, true, NS), cell('Yes: SHAP + attention', G, true, NS), cell('Yes', G, true, NS)],
       [{ text: 'Snort / Suricata', options: { bold: true } }, cell('No', R, true), cell('No: rules', R, true), cell('Partial (rule tags)'), cell('Rule name only'), cell('Yes', G)],
       [{ text: 'ML flow classifiers (RF / XGBoost IDS)', options: { bold: true } }, cell('No', R, true), cell('No: one flow at a time', R, true), cell('No'), cell('Sometimes'), cell('Yes', G)],
       [{ text: 'Commercial NDR / SIEM (e.g. Darktrace, Splunk)', options: { bold: true } }, cell('Risk scores, not stage forecasts'), cell('Varies'), cell('Yes', G), cell('Partial'), cell('Varies: often cloud')],
@@ -422,7 +422,7 @@ const lead = (b, t, br = false, c = RED) => [{ text: b, options: { bold: true, c
 
     // standards & knowledge alignment
     box(s, 3.72, 0.6, 5.05, 3.95, WHITE, GREYB, { lw: 1 });
-    T(s, 'NetSentinel Foresight · Standards & Knowledge Alignment', { x: 3.72, y: 0.66, w: 5.05, h: 0.26, fontSize: 11, bold: true, color: '333333', align: 'center' });
+    T(s, 'SentiNet · Standards & Knowledge Alignment', { x: 3.72, y: 0.66, w: 5.05, h: 0.26, fontSize: 11, bold: true, color: '333333', align: 'center' });
     const std = [
       ['MITRE ATT&CK', 'Stage labels + technique IDs for every forecast (T1595, T1190, T1021, T1071, T1041…).', 'DDEBF7'],
       ['CAPEC', 'Attack patterns linked to every ATT&CK technique the evidence points to.', 'E2EFDA'],
