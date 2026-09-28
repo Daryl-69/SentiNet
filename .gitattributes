@@ -1,0 +1,7 @@
+*.bat text eol=crlf
+*.sh text eol=lf
+*.pcap binary
+*.gz binary
+*.pt binary
+*.joblib binary
+*.pptx binary

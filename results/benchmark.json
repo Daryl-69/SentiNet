@@ -1,0 +1,296 @@
+[
+ {
+  "name": "Held-out simulated scenarios: 30 x 12 h, all attack types",
+  "captures": 30,
+  "windows": 21000,
+  "positives": 3388,
+  "horizon_K": 10,
+  "window_seconds": 60.0,
+  "models": {
+   "world_model": {
+    "threshold": 0.8596088886260986,
+    "precision": 0.8456981664315938,
+    "recall": 0.884887839433294,
+    "f1": 0.8648492715995961,
+    "fpr": 0.031058369293663412,
+    "roc_auc": 0.9735981001737305,
+    "pr_auc": 0.8991869246180327,
+    "brier": 0.0433918721973896,
+    "tp": 2998,
+    "fp": 547,
+    "fn": 390,
+    "tn": 17065,
+    "early_warning": {
+     "onsets": 22,
+     "warned_within_K": 13,
+     "warned_share": 0.5909090909090909,
+     "median_lead_minutes": 14.0
+    }
+   },
+   "world_model_history_shuffled": {
+    "threshold": 0.8596088886260986,
+    "precision": 0.22403663383445654,
+    "recall": 0.7653482880755608,
+    "f1": 0.3466114155861516,
+    "fpr": 0.5099364069952306,
+    "roc_auc": 0.6720097129760996,
+    "pr_auc": 0.25133507398488003,
+    "brier": 0.46761810779571533,
+    "tp": 2593,
+    "fp": 8981,
+    "fn": 795,
+    "tn": 8631
+   },
+   "logistic_regression": {
+    "threshold": 0.5410214066505432,
+    "precision": 0.4347052280311457,
+    "recall": 0.5767414403778041,
+    "f1": 0.49575034885195984,
+    "fpr": 0.14427662957074722,
+    "roc_auc": 0.7883635389603686,
+    "pr_auc": 0.5600616941305945,
+    "brier": 0.16710837185382843,
+    "tp": 1954,
+    "fp": 2541,
+    "fn": 1434,
+    "tn": 15071,
+    "early_warning": {
+     "onsets": 22,
+     "warned_within_K": 18,
+     "warned_share": 0.8181818181818182,
+     "median_lead_minutes": 1.0
+    }
+   },
+   "logistic_regression_equal_fpr": {
+    "threshold": 0.7201967239379883,
+    "precision": 0.6961111111111111,
+    "recall": 0.36983471074380164,
+    "f1": 0.4830377794911334,
+    "fpr": 0.031058369293663412,
+    "roc_auc": 0.7883635389603686,
+    "pr_auc": 0.5600616941305945,
+    "brier": 0.16710837185382843,
+    "tp": 1253,
+    "fp": 547,
+    "fn": 2135,
+    "tn": 17065,
+    "early_warning": {
+     "onsets": 22,
+     "warned_within_K": 7,
+     "warned_share": 0.3181818181818182,
+     "median_lead_minutes": 0.0
+    }
+   }
+  },
+  "stage_detection_macro_f1": 0.9003502207014168,
+  "stage_forecast_macro_f1": {
+   "t+1": 0.6831163402008364,
+   "t+10": 0.4594945547660683
+  },
+  "stage_support": {
+   "Benign": 18372,
+   "Reconnaissance": 763,
+   "Initial Access": 96,
+   "Lateral Movement": 580,
+   "Command & Control": 1453,
+   "Exfiltration": 319,
+   "Impact": 17
+  }
+ },
+ {
+  "name": "Unseen attack pattern: low-and-slow APT, model trained WITHOUT any slow-APT campaign (16 x 12 h)",
+  "captures": 16,
+  "windows": 11200,
+  "positives": 3427,
+  "horizon_K": 10,
+  "window_seconds": 60.0,
+  "models": {
+   "world_model": {
+    "threshold": 0.7336273193359375,
+    "precision": 0.9288025889967637,
+    "recall": 0.33498686898161656,
+    "f1": 0.49238687540210163,
+    "fpr": 0.011321240190402676,
+    "roc_auc": 0.7908675519334715,
+    "pr_auc": 0.7248474542008887,
+    "brier": 0.18475762009620667,
+    "tp": 1148,
+    "fp": 88,
+    "fn": 2279,
+    "tn": 7685,
+    "early_warning": {
+     "onsets": 16,
+     "warned_within_K": 0,
+     "warned_share": 0.0,
+     "median_lead_minutes": 0.0
+    }
+   },
+   "world_model_history_shuffled": {
+    "threshold": 0.7336273193359375,
+    "precision": 0.45482866043613707,
+    "recall": 0.1278085789320105,
+    "f1": 0.19954441913439636,
+    "fpr": 0.06754148977228869,
+    "roc_auc": 0.5538086635477472,
+    "pr_auc": 0.3605162621282365,
+    "brier": 0.2909170985221863,
+    "tp": 438,
+    "fp": 525,
+    "fn": 2989,
+    "tn": 7248
+   },
+   "logistic_regression": {
+    "threshold": 0.6248463988304138,
+    "precision": 0.4489795918367347,
+    "recall": 0.16690983367376713,
+    "f1": 0.24335247819612846,
+    "fpr": 0.09031262060980316,
+    "roc_auc": 0.5824570217565679,
+    "pr_auc": 0.39713407793977196,
+    "brier": 0.23085427284240723,
+    "tp": 572,
+    "fp": 702,
+    "fn": 2855,
+    "tn": 7071,
+    "early_warning": {
+     "onsets": 16,
+     "warned_within_K": 6,
+     "warned_share": 0.375,
+     "median_lead_minutes": 0.0
+    }
+   },
+   "logistic_regression_equal_fpr": {
+    "threshold": 0.84412682056427,
+    "precision": 0.648,
+    "recall": 0.047271666180332655,
+    "f1": 0.0881153113951591,
+    "fpr": 0.011321240190402676,
+    "roc_auc": 0.5824570217565679,
+    "pr_auc": 0.39713407793977196,
+    "brier": 0.23085427284240723,
+    "tp": 162,
+    "fp": 88,
+    "fn": 3265,
+    "tn": 7685,
+    "early_warning": {
+     "onsets": 16,
+     "warned_within_K": 1,
+     "warned_share": 0.0625,
+     "median_lead_minutes": 0.0
+    }
+   }
+  },
+  "stage_detection_macro_f1": 0.5091093386997143,
+  "stage_forecast_macro_f1": {
+   "t+1": 0.27625080976056765,
+   "t+10": 0.24891449490705067
+  },
+  "stage_support": {
+   "Benign": 9669,
+   "Reconnaissance": 923,
+   "Initial Access": 16,
+   "Lateral Movement": 177,
+   "Command & Control": 366,
+   "Exfiltration": 369,
+   "Impact": 0
+  }
+ },
+ {
+  "name": "Same slow-APT test set, model that saw slow-APT campaigns in training (reference)",
+  "captures": 16,
+  "windows": 11200,
+  "positives": 3427,
+  "horizon_K": 10,
+  "window_seconds": 60.0,
+  "models": {
+   "world_model": {
+    "threshold": 0.8596088886260986,
+    "precision": 0.8694085860102071,
+    "recall": 0.8450539830755763,
+    "f1": 0.8570583012725659,
+    "fpr": 0.05596294866846777,
+    "roc_auc": 0.9456249290723792,
+    "pr_auc": 0.8930218482781285,
+    "brier": 0.07683583348989487,
+    "tp": 2896,
+    "fp": 435,
+    "fn": 531,
+    "tn": 7338,
+    "early_warning": {
+     "onsets": 16,
+     "warned_within_K": 3,
+     "warned_share": 0.1875,
+     "median_lead_minutes": 0.0
+    }
+   },
+   "world_model_history_shuffled": {
+    "threshold": 0.8596088886260986,
+    "precision": 0.33081876724931003,
+    "recall": 0.5246571345199883,
+    "f1": 0.40577747686752424,
+    "fpr": 0.46790171105107425,
+    "roc_auc": 0.5375739482036819,
+    "pr_auc": 0.3192348673439357,
+    "brier": 0.4474217891693115,
+    "tp": 1798,
+    "fp": 3637,
+    "fn": 1629,
+    "tn": 4136
+   },
+   "logistic_regression": {
+    "threshold": 0.5410214066505432,
+    "precision": 0.4460759493670886,
+    "recall": 0.25707615990662386,
+    "f1": 0.3261754905590522,
+    "fpr": 0.14074359963977873,
+    "roc_auc": 0.5927952140378333,
+    "pr_auc": 0.4306764514903225,
+    "brier": 0.21982592344284058,
+    "tp": 881,
+    "fp": 1094,
+    "fn": 2546,
+    "tn": 6679,
+    "early_warning": {
+     "onsets": 16,
+     "warned_within_K": 8,
+     "warned_share": 0.5,
+     "median_lead_minutes": 1.5
+    }
+   },
+   "logistic_regression_equal_fpr": {
+    "threshold": 0.6378195881843567,
+    "precision": 0.5606060606060606,
+    "recall": 0.16194922672891743,
+    "f1": 0.25130178854426083,
+    "fpr": 0.05596294866846777,
+    "roc_auc": 0.5927952140378333,
+    "pr_auc": 0.4306764514903225,
+    "brier": 0.21982592344284058,
+    "tp": 555,
+    "fp": 435,
+    "fn": 2872,
+    "tn": 7338,
+    "early_warning": {
+     "onsets": 16,
+     "warned_within_K": 5,
+     "warned_share": 0.3125,
+     "median_lead_minutes": 0.0
+    }
+   }
+  },
+  "stage_detection_macro_f1": 0.6230941249878266,
+  "stage_forecast_macro_f1": {
+   "t+1": 0.31453872207850925,
+   "t+10": 0.29642283658251684
+  },
+  "stage_support": {
+   "Benign": 9669,
+   "Reconnaissance": 923,
+   "Initial Access": 16,
+   "Lateral Movement": 177,
+   "Command & Control": 366,
+   "Exfiltration": 369,
+   "Impact": 0
+  }
+ }
+]
