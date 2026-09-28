@@ -16,6 +16,9 @@ minute to the next, **P(S<sub>t+1</sub> | S<sub>≤t</sub>)**. It then rolls tha
 
 It runs **fully offline on an ordinary CPU**: no cloud and no API calls.
 
+📘 **New to the project? Read [`docs/SentiNet_Explained.md`](docs/SentiNet_Explained.md)**: a plain-language guide
+to the idea, the demo story, the innovation, the results and likely judge questions.
+
 ---
 
 ## 1. Run it from the downloaded ZIP
@@ -201,6 +204,7 @@ weights/                trained model (world_model.pt, meta.json, baselines.jobl
 samples/                demo CSV, demo PCAP + its ground-truth labels, example asset list (CVE/CVSS)
 results/                benchmark tables
 docs/ARCHITECTURE.md    architecture document (2 pages)
+docs/SentiNet_Explained.md  plain-language guide for the team
 ppt/                    SIH idea-submission deck (.pptx / .pdf) and its generator
 tests/                  pytest suite
 ```
