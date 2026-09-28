@@ -19,5 +19,5 @@ if [ ! -f .venv/installed.txt ]; then
   .venv/bin/python -m pip install -r requirements.txt
   echo ok > .venv/installed.txt
 fi
-echo "[SentiNet] starting on http://localhost:8501  (Ctrl+C to stop)"
+echo "[SentiNet] starting the app (default http://localhost:8501, Ctrl+C to stop)"
 exec .venv/bin/python -m sentinet app "$@"
