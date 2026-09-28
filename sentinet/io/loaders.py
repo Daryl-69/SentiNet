@@ -23,14 +23,33 @@ from ..schema import finalise
 from ..stages import label_to_stage
 
 FORMATS = ["auto", "sentinet", "cicflowmeter", "ctu13", "unsw", "pcap"]
-_EXT_OK = (".csv", ".csv.gz", ".binetflow", ".binetflow.gz", ".pcap", ".pcapng", ".cap", ".gz")
+_EXT_OK = (".csv", ".csv.gz", ".binetflow", ".binetflow.gz", ".pcap", ".pcapng", ".cap", ".gz", ".parquet")
 
 
 def _norm(c: str) -> str:
     return re.sub(r"[^a-z0-9]", "", str(c).lower())
 
 
+def _epoch(t: pd.Series) -> pd.Series:
+    """datetime -> unix seconds, independent of pandas' datetime resolution (ns / us / s)."""
+    return (t - pd.Timestamp("1970-01-01")).dt.total_seconds()
+
+
+def stages_of(labels: pd.Series) -> pd.Series:
+    """label -> stage, evaluating each distinct label once (datasets have millions of rows, few labels)."""
+    lab = labels.astype(str)
+    m = {u: label_to_stage(u) for u in lab.unique()}
+    return lab.map(m).astype(int)
+
+
 def _read_csv(path, **kw) -> pd.DataFrame:
+    if str(path).lower().endswith(".parquet"):
+        df = pd.read_parquet(path)
+        n = kw.get("nrows")
+        if kw.get("header", "infer") is None:   # emulate header=None: first row = column names
+            df = pd.concat([pd.DataFrame([list(df.columns)], columns=df.columns), df], ignore_index=True)
+            df.columns = range(df.shape[1])
+        return df.head(n) if n else df
     return pd.read_csv(path, low_memory=False, encoding_errors="replace", **kw)
 
 
@@ -89,14 +108,22 @@ def _pick(df: pd.DataFrame, names: list[str]):
 def _parse_cic_time(s: pd.Series) -> pd.Series:
     raw = s.astype(str).str.strip()
     has_ampm = raw.str.contains(r"[AP]M", case=False, regex=True).any()
-    t = pd.to_datetime(raw, dayfirst=True, errors="coerce", format="mixed")
+    t = None
+    for fmt in ("%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M", "%d/%m/%Y %I:%M:%S %p", "%d/%m/%Y %I:%M %p",
+                "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+        cand = pd.to_datetime(raw, format=fmt, errors="coerce")
+        if cand.notna().mean() > 0.99:
+            t = cand
+            break
+    if t is None:  # slow path: per-row parsing
+        t = pd.to_datetime(raw, dayfirst=True, errors="coerce", format="mixed")
     if not has_ampm and t.notna().any():
         # CIC-IDS2017 writes afternoon times on a 12-hour clock with no AM/PM
         # ("3:30" = 15:30). Capture hours were ~08:00-18:00, so hours < 8 are PM.
         h = t.dt.hour
         if h.max() <= 12 and (h < 8).any() and (h >= 8).any():
             t = t + pd.to_timedelta(np.where(h < 8, 12, 0), unit="h")
-    return t.astype("int64") / 1e9
+    return _epoch(t)
 
 
 def load_cicflowmeter(path) -> pd.DataFrame:
@@ -119,7 +146,7 @@ def load_cicflowmeter(path) -> pd.DataFrame:
             o[c] = "unknown"
     o = o.replace([np.inf, -np.inf], np.nan)
     o["label"] = o.get("label", pd.Series("benign", index=o.index)).astype(str).str.strip()
-    o["stage"] = o["label"].map(label_to_stage)
+    o["stage"] = stages_of(o["label"])
     return finalise(o)
 
 
@@ -138,7 +165,11 @@ def load_ctu13(path) -> pd.DataFrame:
     df = _read_csv(path)
     df.columns = [_norm(c) for c in df.columns]
     o = pd.DataFrame()
-    o["ts"] = pd.to_datetime(df["starttime"], errors="coerce", format="mixed").astype("int64") / 1e9
+    st = df["starttime"].astype(str).str.strip()
+    ts = pd.to_datetime(st, format="%Y/%m/%d %H:%M:%S.%f", errors="coerce")
+    if ts.notna().mean() < 0.99:
+        ts = pd.to_datetime(st, errors="coerce", format="mixed")
+    o["ts"] = _epoch(ts)
     o["duration"] = pd.to_numeric(df["dur"], errors="coerce")
     o["proto"] = df["proto"].astype(str).str.lower()
     o["src_ip"], o["dst_ip"] = df["srcaddr"].astype(str), df["dstaddr"].astype(str)
@@ -154,10 +185,10 @@ def load_ctu13(path) -> pd.DataFrame:
     state = df.get("state", pd.Series("", index=df.index)).astype(str)
     is_tcp = o["proto"] == "tcp"
     for flag, letter in (("syn", "S"), ("ack", "A"), ("fin", "F"), ("rst", "R"), ("psh", "P"), ("urg", "U")):
-        cnt = state.str.split("_").map(lambda parts, L=letter: sum(L in p for p in parts) if isinstance(parts, list) else 0)
-        o[flag] = np.where(is_tcp, cnt, 0)
+        lut = {u: sum(letter in p_ for p_ in str(u).split("_")) for u in state.unique()}
+        o[flag] = np.where(is_tcp, state.map(lut), 0)
     o["label"] = df["label"].astype(str)
-    o["stage"] = o["label"].map(label_to_stage)
+    o["stage"] = stages_of(o["label"])
     return finalise(o)
 
 
@@ -201,7 +232,7 @@ def load_unsw(path) -> pd.DataFrame:
     lab = pd.to_numeric(df.get("label", 0), errors="coerce").fillna(0)
     cat = df.get("attack_cat", pd.Series("", index=df.index)).astype(str).str.strip()
     o["label"] = np.where(lab > 0, cat.where(cat.str.len() > 0, "attack"), "benign")
-    o["stage"] = pd.Series(o["label"]).map(label_to_stage).values
+    o["stage"] = stages_of(pd.Series(o["label"])).values
     return finalise(o)
 
 

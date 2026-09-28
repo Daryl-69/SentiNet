@@ -75,6 +75,7 @@ def finalise(df: pd.DataFrame) -> pd.DataFrame:
     out = out[out["ts"].notna()]
     if out["stage"].isna().all():
         from .stages import label_to_stage
-        out["stage"] = out["label"].map(label_to_stage)
+        m = {u: label_to_stage(u) for u in out["label"].unique()}
+        out["stage"] = out["label"].map(m)
     out["stage"] = out["stage"].fillna(0).astype(int)
     return out.sort_values("ts", kind="mergesort").reset_index(drop=True)

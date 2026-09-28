@@ -84,6 +84,8 @@ def test_cicflowmeter_loader(tmp_path, scenario):
     assert len(df) == 300
     assert abs(df["duration"].sum() - f["duration"].sum()) < 1e-3 * max(1, f["duration"].sum())
     assert set(df["stage"].unique()) <= {BENIGN, RECON, LATERAL}
+    span = df["ts"].max() - df["ts"].min()
+    assert abs(span - (f["ts"].max() - f["ts"].min())) < 2, "timestamps must stay in seconds"
 
 
 def test_ctu13_loader(tmp_path):
@@ -99,6 +101,8 @@ def test_ctu13_loader(tmp_path):
     assert tcp["syn"] == 1 and tcp["rst"] == 1 and tcp["bytes_bwd"] == 120
     assert df["dst_port"].tolist() == [80, 1025] and df["src_port"].tolist() == [1027, 53]
     assert sorted(df["stage"].tolist()) == [BENIGN, C2]
+    assert abs(df["ts"].iloc[1] - df["ts"].iloc[0] - 6.560548) < 1e-3
+    assert abs(df["ts"].iloc[0] - 1312969613.047277) < 1
 
 
 def test_unsw_loader(tmp_path):
