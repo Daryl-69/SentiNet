@@ -41,8 +41,10 @@ def discover(root, verbose=True) -> list[dict]:
         out.append(rec)
     if verbose:
         for r in out:
-            tag = r["format"] or f"SKIP: {r.get('problem', '?')}"
-            print(f"  {r['size_mb']:9.1f} MB  {tag:14.14s}  {r['path']}")
+            if r["format"]:
+                print(f"  {r['size_mb']:9.1f} MB  {r['format']:14s}  {r['path']}")
+            else:
+                print(f"  {r['size_mb']:9.1f} MB  SKIPPED         {r['path']}\n{'':30s}reason: {r.get('problem', '?')}")
     return out
 
 

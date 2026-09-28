@@ -113,6 +113,10 @@ How labels map to stages is in `sentinet/stages.py`. For example, PortScan → R
 attacks/Exploits → Initial Access, Infiltration/Worms → Lateral Movement, Bot/Botnet/Backdoor → Command & Control,
 DoS/DDoS → Impact.
 
+**On Kaggle:** open [`notebooks/sentinet_kaggle_train.ipynb`](notebooks/sentinet_kaggle_train.ipynb), attach the datasets,
+turn Internet on and Run All. It finds the files, trains one model per dataset, benchmarks it against logistic
+regression and zips the weights and results.
+
 ## 5. Results
 
 All numbers are on **held-out simulated scenarios**: captures the model never saw, whole 12-hour scenarios, split by
