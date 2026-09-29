@@ -86,12 +86,14 @@ _CIC_MAP = {
     "src_ip": ["sourceip", "srcip"], "dst_ip": ["destinationip", "dstip"],
     "src_port": ["sourceport", "srcport"], "dst_port": ["destinationport", "dstport"],
     "proto": ["protocol"], "ts": ["timestamp"], "duration": ["flowduration"],
-    "pkts_fwd": ["totalfwdpackets", "totfwdpkts"], "pkts_bwd": ["totalbackwardpackets", "totbwdpkts"],
-    "bytes_fwd": ["totallengthoffwdpackets", "totlenfwdpkts"], "bytes_bwd": ["totallengthofbwdpackets", "totlenbwdpkts"],
+    "pkts_fwd": ["totalfwdpackets", "totfwdpkts", "totalfwdpacket"],
+    "pkts_bwd": ["totalbackwardpackets", "totbwdpkts", "totalbwdpackets", "totalbwdpacket"],
+    "bytes_fwd": ["totallengthoffwdpackets", "totlenfwdpkts", "totallengthoffwdpacket"],
+    "bytes_bwd": ["totallengthofbwdpackets", "totlenbwdpkts", "totallengthofbwdpacket"],
     "iat_mean": ["flowiatmean"], "iat_std": ["flowiatstd"], "iat_max": ["flowiatmax"],
     "fin": ["finflagcount", "finflagcnt"], "syn": ["synflagcount", "synflagcnt"], "rst": ["rstflagcount", "rstflagcnt"],
     "psh": ["pshflagcount", "pshflagcnt"], "ack": ["ackflagcount", "ackflagcnt"], "urg": ["urgflagcount", "urgflagcnt"],
-    "win_mean": ["initwinbytesforward", "initfwdwinbyts"],
+    "win_mean": ["initwinbytesforward", "initfwdwinbyts", "fwdinitwinbytes"],
     "payload_mean": ["packetlengthmean", "pktlenmean"], "payload_std": ["packetlengthstd", "pktlenstd"],
     "label": ["label"],
 }
@@ -164,6 +166,8 @@ def _port(v):
 def load_ctu13(path) -> pd.DataFrame:
     df = _read_csv(path)
     df.columns = [_norm(c) for c in df.columns]
+    if "starttime" not in df.columns:
+        raise ValueError(f"{path}: no StartTime column (stripped CTU-13 copy?) - columns are {list(df.columns)[:25]}")
     o = pd.DataFrame()
     st = df["starttime"].astype(str).str.strip()
     ts = pd.to_datetime(st, format="%Y/%m/%d %H:%M:%S.%f", errors="coerce")

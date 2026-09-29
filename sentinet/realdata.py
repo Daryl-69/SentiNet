@@ -21,6 +21,27 @@ from .stages import INFILTRATION, STAGES
 from .synth.generator import write_flows
 
 
+_TIME_COLUMN = {"cicflowmeter": ("timestamp",), "ctu13": ("starttime",), "unsw": ("stime",)}
+_WHY = {"cicflowmeter": "CICFlowMeter file without a Timestamp column (e.g. the 'MachineLearningCVE' or '-no-metadata' "
+                        "variants): flows cannot be put in time order. Use a copy with Timestamp + Source/Destination IP "
+                        "('GeneratedLabelledFlows' / 'TrafficLabelling').",
+        "ctu13": "CTU-13 file without a StartTime column (a stripped / '-no-metadata' copy): flows cannot be put in time "
+                 "order. Use the original *.binetflow files (columns StartTime, SrcAddr, DstAddr, ..., Label).",
+        "unsw": "UNSW-NB15 file without Stime (the train/test-set CSVs): use UNSW-NB15_1..4.csv."}
+
+
+def _norm(c) -> str:
+    return "".join(ch for ch in str(c).lower() if ch.isalnum())
+
+
+def columns_of(path) -> list[str]:
+    p = str(path)
+    if p.endswith(".parquet"):
+        import pyarrow.parquet as pq
+        return list(pq.read_schema(p).names)
+    return list(pd.read_csv(p, nrows=2, encoding_errors="replace").columns)
+
+
 def discover(root, verbose=True) -> list[dict]:
     """Every supported file under root, with its detected format (or why it cannot be used)."""
     out = []
@@ -31,20 +52,31 @@ def discover(root, verbose=True) -> list[dict]:
         try:
             rec["format"] = detect_format(p)
         except Exception as exc:  # noqa: BLE001
-            rec["format"], rec["problem"] = None, str(exc)[:200]
-        if rec["format"] == "cicflowmeter":
-            head = pd.read_parquet(p).head(3) if str(p).endswith(".parquet") else pd.read_csv(p, nrows=3, encoding_errors="replace")
-            cols = {c.strip().lower().replace(" ", "").replace("_", "") for c in head.columns}
-            if "timestamp" not in cols:
-                rec["format"], rec["problem"] = None, ("CICFlowMeter file without a Timestamp column (the 'MachineLearningCVE' "
-                                                       "variant) - cannot be ordered in time; use 'GeneratedLabelledFlows'")
+            rec["format"], rec["problem"] = None, str(exc)[:300]
+        if rec["format"] in _TIME_COLUMN:
+            try:
+                cols = columns_of(p)
+                rec["columns"] = cols
+                normed = {_norm(c) for c in cols}
+                if rec["format"] == "unsw" and len(cols) in (48, 49) and not any(n.isalpha() for n in normed):
+                    pass  # header-less raw UNSW file: Stime is column 29
+                elif not any(t in normed for t in _TIME_COLUMN[rec["format"]]):
+                    rec["problem"] = _WHY[rec["format"]] + f" Columns found: {cols[:25]}"
+                    rec["format"] = None
+            except Exception as exc:  # noqa: BLE001
+                rec["format"], rec["problem"] = None, f"could not read columns: {exc}"[:300]
         out.append(rec)
     if verbose:
+        shown = set()
         for r in out:
             if r["format"]:
                 print(f"  {r['size_mb']:9.1f} MB  {r['format']:14s}  {r['path']}")
             else:
-                print(f"  {r['size_mb']:9.1f} MB  SKIPPED         {r['path']}\n{'':30s}reason: {r.get('problem', '?')}")
+                print(f"  {r['size_mb']:9.1f} MB  SKIPPED         {r['path']}")
+                why = r.get("problem", "?")
+                if why not in shown:          # print each distinct reason once
+                    print(f"{'':30s}reason: {why}")
+                    shown.add(why)
     return out
 
 
@@ -56,7 +88,11 @@ def prepare(files, out_dir, fmt="auto", chunk_hours=2.0, window=60.0, min_window
     span = chunk_hours * 3600.0
     for f in files:
         t = time.time()
-        df = load(f, fmt)
+        try:
+            df = load(f, fmt)
+        except Exception as exc:  # noqa: BLE001 - one bad file must not stop the run
+            print(f"  SKIPPED {Path(f).name}: {type(exc).__name__}: {str(exc)[:300]}")
+            continue
         if len(df) == 0:
             continue
         t0 = np.floor(df["ts"].min() / window) * window
