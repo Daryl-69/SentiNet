@@ -196,3 +196,26 @@ def test_knowledge_rules(scenario):
     assert exp and exp[0]["stage"] == "Lateral Movement" and exp[0]["mitigation"].startswith("M")
     r = exposure_adjusted(np.array([0.2, 0.2]), ["a", "b"], {"a": {"cvss": 10.0}})
     assert r[0] > r[1] == pytest.approx(0.2)
+
+
+# ------------------------------------------------------------------ live monitor
+def test_live_engine_forecasts_and_isolation_breaks_the_chain():
+    from sentinet.engine import Forecaster
+    from sentinet.io.pcap import FlowAssembler
+    from sentinet.live import LiveEngine, SimSource
+    src = SimSource(seed=7, n_workstations=12)
+    eng = LiveEngine(Forecaster.load(ROOT / "weights"), src, samples=8)
+    meta = src.launch("web_exploit", src.t0 + 5 * 60)
+    assert eng.step(12) == 12
+    tb = eng.table()
+    assert len(tb) == 12 and tb["p_infiltration"].between(0, 1).all()
+    assert {"fan", "hosts", "node_ips", "z", "merkle_root"} <= set(eng.latest)
+    web = src.net.web
+    eng.contain(web)
+    later = src.flows(eng.t, eng.t + 6 * 3600)
+    assert not ((later["src_ip"] == web) | (later["dst_ip"] == web)).any()
+    assert (later["stage"] == 0).all() and any("chain broken" in e["text"] for e in src.events)
+    assert meta["template"] == "web_exploit"
+    # the live-capture flow assembler exports open flows on drain
+    fa = FlowAssembler(active_timeout=60)
+    assert fa.to_frame(fa.drain()).empty

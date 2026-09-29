@@ -69,7 +69,8 @@ def make_sequence(wd: WindowData, norm: Normaliser, horizon: int, warmup: int = 
     for k in range(1, K + 1):
         ok = np.arange(T) + k < T
         fut = np.zeros(T, dtype=bool)
-        fut[:T - k] = infil[k:]
+        if T > k:
+            fut[:T - k] = infil[k:]
         prev = cum[:, k - 2] if k > 1 else np.zeros(T, dtype=np.float32)
         cum[:, k - 1] = np.maximum(prev, fut.astype(np.float32))
         cum_mask[:, k - 1] = ok & labelled

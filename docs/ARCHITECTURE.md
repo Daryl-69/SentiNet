@@ -99,7 +99,9 @@ seen in training, F1 is 0.49 against 0.09 for the baseline at the same false-pos
 ## 6. Deployment
 
 Everything runs on a CPU and offline: the model has about 170k parameters, and a 12-hour capture (720 windows × 64
-futures) takes a few seconds. The interface is Streamlit, served on localhost. The same engine runs from the CLI for
+futures) takes a few seconds. The interface is Streamlit, served on localhost. Its live monitor forecasts every minute (~0.3 s
+per step) from a live Scapy capture, a replayed PCAP/CSV, or a simulated network where isolating a host really stops
+the attack. The same engine runs from the CLI for
 batch reports (`report.html` with embedded plotly, CSVs, signed receipts). Passive only: it reads traffic copies
 (SPAN/TAP or files) and never sends anything back.
 

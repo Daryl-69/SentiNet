@@ -147,20 +147,26 @@ def _l3(linktype: int, data: bytes):
     return None
 
 
-def read_pcap(path, idle_timeout: float = IDLE_TIMEOUT, max_packets: int | None = None) -> pd.DataFrame:
-    flows: dict = {}
-    pair_last: dict = {}
-    done: list = []
-    ip4 = socket.inet_ntoa
-    ip6 = lambda b: socket.inet_ntop(socket.AF_INET6, b)  # noqa: E731
-    n = 0
-    for ts, linktype, data, wirelen in _iter_packets(path):
-        n += 1
-        if max_packets and n > max_packets:
-            break
+class FlowAssembler:
+    """Turns packets into bidirectional flow records. Used for PCAP files and live capture.
+
+    add(ts, linktype, data, wirelen) for every packet; drain(now) exports every open flow (live mode:
+    one record per flow per window, like a NetFlow active timeout); frame() returns the finished table."""
+
+    def __init__(self, idle_timeout: float = IDLE_TIMEOUT, active_timeout: float = ACTIVE_TIMEOUT):
+        self.idle_timeout, self.active_timeout = idle_timeout, active_timeout
+        self.flows: dict = {}
+        self.pair_last: dict = {}
+        self.done: list = []
+        self.packets = 0
+
+    def add(self, ts, linktype, data, wirelen):
+        self.packets += 1
+        ip4 = socket.inet_ntoa
+        ip6 = lambda b: socket.inet_ntop(socket.AF_INET6, b)  # noqa: E731
         l3 = _l3(linktype, data)
         if l3 is None:
-            continue
+            return
         et, o = l3
         frag = False
         if et == 0x0800 and len(data) >= o + 20:
@@ -175,7 +181,7 @@ def read_pcap(path, idle_timeout: float = IDLE_TIMEOUT, max_packets: int | None 
             l4_len = ip_len - ihl
             if (ff & 0x1FFF) > 0:  # non-first fragment: no L4 header
                 proto_name = {6: "tcp", 17: "udp", 1: "icmp"}.get(proto, str(proto))
-                fl = pair_last.get((proto_name, src, dst))
+                fl = self.pair_last.get((proto_name, src, dst))
                 if fl is not None:
                     fl.frag += 1
                     if src == fl.src:
@@ -184,7 +190,7 @@ def read_pcap(path, idle_timeout: float = IDLE_TIMEOUT, max_packets: int | None 
                     else:
                         fl.pb += 1
                         fl.bb += ip_len
-                continue
+                return
         elif et == 0x86DD and len(data) >= o + 40:
             pl = (data[o + 4] << 8) | data[o + 5]
             proto, ttl = data[o + 6], data[o + 7]
@@ -197,7 +203,7 @@ def read_pcap(path, idle_timeout: float = IDLE_TIMEOUT, max_packets: int | None 
                 pl -= 8
             ip_len, l4_len = pl + 40, pl
         else:
-            continue
+            return
 
         sport = dport = -1
         flags = 0
@@ -227,18 +233,18 @@ def read_pcap(path, idle_timeout: float = IDLE_TIMEOUT, max_packets: int | None 
 
         a, b = (src, sport), (dst, dport)
         key = (pname, a, b) if a <= b else (pname, b, a)
-        fl = flows.get(key)
+        fl = self.flows.get(key)
         syn_only = pname == "tcp" and (flags & 0x02) and not (flags & 0x10)
-        if fl is not None and (ts - fl.last > idle_timeout or ts - fl.start > ACTIVE_TIMEOUT or (fl.closed and syn_only)):
-            done.append(fl.row())
+        if fl is not None and (ts - fl.last > self.idle_timeout or ts - fl.start > self.active_timeout or (fl.closed and syn_only)):
+            self.done.append(fl.row())
             fl = None
         if fl is None:
             fl = _Flow(key, src, dst, sport, dport, pname, ts)
-            flows[key] = fl
+            self.flows[key] = fl
         else:
             fl.iat.add(ts - fl.last)
             fl.last = ts
-        pair_last[(pname, src, dst)] = fl
+        self.pair_last[(pname, src, dst)] = fl
         fwd = src == fl.src and sport == fl.sport
         if fwd:
             fl.pf += 1
@@ -267,12 +273,32 @@ def read_pcap(path, idle_timeout: float = IDLE_TIMEOUT, max_packets: int | None 
                     fl.retrans += 1
                 elif len(fl.seqs) < _MAX_SEQS:
                     fl.seqs.add(k)
-    done.extend(fl.row() for fl in flows.values())
-    df = pd.DataFrame(done, columns=_ROW_COLS)
-    df["label"] = "benign"
-    df["stage"] = 0
-    out = finalise(df)
-    out.attrs["packets"] = n
+
+    def drain(self, now: float | None = None) -> list:
+        """Export all open flows now (and forget them); returns finished + exported rows."""
+        rows = self.done + [fl.row() for fl in self.flows.values()]
+        self.done, self.flows, self.pair_last = [], {}, {}
+        return rows
+
+    @staticmethod
+    def to_frame(rows) -> pd.DataFrame:
+        df = pd.DataFrame(rows, columns=_ROW_COLS)
+        df["label"] = "benign"
+        df["stage"] = 0
+        return finalise(df)
+
+    def frame(self) -> pd.DataFrame:
+        return self.to_frame(self.drain())
+
+
+def read_pcap(path, idle_timeout: float = IDLE_TIMEOUT, max_packets: int | None = None) -> pd.DataFrame:
+    asm = FlowAssembler(idle_timeout)
+    for ts, linktype, data, wirelen in _iter_packets(path):
+        if max_packets and asm.packets >= max_packets:
+            break
+        asm.add(ts, linktype, data, wirelen)
+    out = asm.frame()
+    out.attrs["packets"] = asm.packets
     return out
 
 

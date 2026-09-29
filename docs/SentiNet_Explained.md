@@ -65,6 +65,39 @@ flowchart LR
 
 ## 4. The demo story (what we show judges)
 
+### 4.1 The live dashboard (use this for the video)
+
+![Live monitor](img/live_top.png)
+
+Start the app. It opens on **📡 Live monitor**. Keep **Simulated network** + **Auto demo script** on and press
+**Start**. One simulated minute passes every second, so the whole story takes about 90 seconds:
+
+1. **08:00–08:20 · normal office traffic.** Risk ≈ 0 %.
+2. **08:20 · an attacker starts scanning** the company's web server (red "✕ attack" marker). The stage strip turns
+   orange (Reconnaissance), and the risk curve starts to bend upward as the scanning looks more and more like the
+   run-up to a break-in.
+3. **08:47 · ALARM.** 100 % chance of infiltration within 10 minutes, forecast stage *Initial Access*, likely target
+   10.10.2.20 (the web server). The alert explains itself: ATT&CK evidence, the technique expected next, and the
+   mitigation for it.
+4. **08:58 · the real break-in** happens (look at the ground-truth strip). **We warned 11 minutes earlier.**
+5. **Press "Isolate host".** The riskiest host is already selected. The web server is cut off, the attack chain
+   breaks, and the risk falls to 0 % (blue "🛡 action" marker). *Forecast → explanation → action → result, live.*
+
+![After isolation](img/live_isolated.png)
+
+While it runs, point at:
+- the **64 imagined futures** fan: the world model literally simulating the next 10 minutes;
+- the **host graph**: inner ring = our network, red = at risk;
+- the **heatmap** of what the model sees;
+- the **"How it is working right now"** strip, which counts the signed receipts.
+
+The sidebar can launch other attacks (phishing, brute force, slow APT, failed attack, DDoS).
+
+The same dashboard works on **real traffic**: choose **Live capture** (run as Administrator with Npcap on Windows,
+or with sudo on Linux/macOS) or **Replay a capture** for any PCAP/CSV.
+
+### 4.2 The 12-hour recording (Analyse a capture page)
+
 We ship a 12-hour recording of a simulated company network. Here is what happens in it and what SentiNet does:
 
 | Time | What really happens | What SentiNet shows |
@@ -209,7 +242,7 @@ minutes and gave no advance warning on this type. We say this openly.
 | K-step forward simulation → infiltration probability timeline | 64 rollouts × 10 steps, every minute |
 | Predicted ATT&CK stage | For every future step, plus the technique names |
 | Driving features via SHAP / attention | Exact Shapley values + attention + flagged flows |
-| Offline demo interface (Streamlit / Flask / CLI) taking a PCAP or CSV | Streamlit app + CLI + HTML report, 100 % offline |
+| Offline demo interface (Streamlit / Flask / CLI) taking a PCAP or CSV | Streamlit app (live monitor on simulated / replayed / live-captured traffic + whole-capture analysis) + CLI + HTML report, 100 % offline |
 | Benchmark vs logistic regression (F1, precision, recall, FPR) | `results/benchmark.md` |
 | Training scripts, weights, reproducible config | `python -m sentinet train`, `weights/`, `scripts/reproduce_results.py` |
 | Deliverables: code, README, 2-page architecture doc, 5-slide deck, 2-min video | Repo, `README.md`, `docs/ARCHITECTURE.md`, `ppt/` (**video still to record**) |
@@ -271,7 +304,10 @@ including us, can quietly change a prediction afterwards. Auditors can check whe
 1. GitHub → **Code → Download ZIP** → unzip.
 2. Install Python 3.10–3.13 (Windows: tick "Add python.exe to PATH").
 3. Windows: double-click **`run_windows.bat`**. Linux/macOS: **`bash run.sh`**.
-4. The first run installs everything (~5 min, needs internet). Then open **http://localhost:8501** and pick a demo.
+4. The first run installs everything (~5 min, needs internet). The app opens at **http://localhost:8501** on the
+   Live monitor: press **Start** (section 4.1).
+5. Need data? `python scripts/make_dataset.py` builds **SentiNet-Sim v1** (48 labelled 8-hour network recordings,
+   ~1.9 M flows, 2 PCAPs) in about a minute. See [`DATASET_CARD.md`](DATASET_CARD.md).
 
 For the command line, see the [README](../README.md).
 
@@ -298,7 +334,7 @@ For the command line, see the [README](../README.md).
 
 ## 12. What is left for the team
 
-- [ ] **Record the 2-minute demo video** (story: section 4). Put the link on slide 6 of the deck (`ppt/build/deck.js` →
+- [ ] **Record the 2-minute demo video** (story: section 4.1, a screen recording of the live dashboard). Put the link on slide 6 of the deck (`ppt/build/deck.js` →
       "Demo Video") and rebuild, or edit the .pptx directly.
 - [ ] **Train on one real dataset** (CIC-IDS2017 "GeneratedLabelledFlows" or CTU-13) and add its benchmark next to the
       simulator results.
@@ -315,7 +351,9 @@ For the command line, see the [README](../README.md).
 | `docs/ARCHITECTURE.md` | 2-page architecture document (SIH deliverable) |
 | `docs/SentiNet_Explained.md` | This file |
 | `ppt/SentiNet_SIH26153.pptx` / `.pdf` | The idea-submission deck |
-| `app.py` | The web app |
+| `app.py`, `ui/live.py`, `ui/analyse.py` | The web app: live dashboard + whole-capture analysis |
+| `sentinet/live.py` | Live engine: simulated network, replay, real packet capture |
+| `scripts/make_dataset.py`, `docs/DATASET_CARD.md` | The SentiNet-Sim v1 dataset builder and its card |
 | `sentinet/` | All the code: loaders, features, model, engine, knowledge base, ledger, simulator |
 | `weights/` | The trained model |
 | `samples/` | Demo CSV, demo PCAP, its labels, and an example CVE asset list |

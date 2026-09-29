@@ -8,3 +8,4 @@ report/
 .pytest_cache/
 .DS_Store
 ppt/build/node_modules/
+dist/

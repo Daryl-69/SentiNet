@@ -38,7 +38,9 @@ to the idea, the demo story, the innovation, the results and likely judge questi
    The first start creates a private environment in `.venv` and installs the dependencies. This takes about 5 minutes
    and needs internet once. After that, the app opens at **<http://localhost:8501>**, and later starts are offline and
    take seconds.
-4. In the app, pick **"Demo: 12 h enterprise flows with an intrusion"** or the PCAP demo, or upload your own capture.
+4. The app opens on the **📡 Live monitor**. Leave **Simulated network (demo)** selected and press **Start**: see
+   [section 2](#2-live-monitor-the-dashboard) for what happens next. To analyse a whole recording instead, open
+   **🔎 Analyse a capture** in the left menu and pick a demo or upload your own capture.
 
 <details>
 <summary><b>Manual setup (any OS)</b></summary>
@@ -64,7 +66,53 @@ downloading several GB of GPU libraries.
 * To reinstall from scratch, delete the `.venv` folder and run the launcher again.
 </details>
 
-## 2. What you see in the app
+## 2. Live monitor (the dashboard)
+
+![Live monitor during an attack](docs/img/live_top.png)
+
+The live monitor is a SOC-style dashboard. Every minute of traffic becomes one network state, and the world model
+forecasts the next 10 minutes. It has three traffic sources:
+
+| Source | What it is | Use it for |
+|---|---|---|
+| **Simulated network (demo)** | A 20-workstation company network generated on the fly. Attacks can be launched from the sidebar, and **isolating a host really cuts it off**, so a response changes the future | The demo video: no admin rights, no real attack traffic needed |
+| **Replay a capture** | Any PCAP/PCAPNG or flow CSV (CIC-IDS, CTU-13, UNSW-NB15, SentiNet) played back as if it were live, 0.5–3 minutes per second | Showing a real dataset "live" |
+| **Live capture (this computer)** | Sniffs a network interface with Scapy, builds flows and forecasts every real minute | A real network. Needs admin rights: on Windows install [Npcap](https://npcap.com) and run as Administrator; on Linux/macOS use `sudo`. Isolation is only logged as a recommendation, because a passive sensor cannot block traffic |
+
+**The 2-minute demo (Auto demo script on, speed 1 = one simulated minute per second):**
+
+| Network clock | What happens | What the dashboard shows |
+|---|---|---|
+| 08:00–08:20 | Normal office traffic | Risk ≈ 0 %, everything grey |
+| 08:20 | The auto script launches a web intrusion ("✕ attack" marker). The attacker scans and probes the web server 10.10.2.20 | Stage strip turns orange (Reconnaissance); the risk curve starts to bend upward |
+| **08:47** | Still only reconnaissance | **Alarm**: 100 % infiltration within 10 minutes, forecast stage Initial Access, target 10.10.2.20. The alert shows the ATT&CK evidence and the mitigation for the expected next technique |
+| 08:58 | **The real break-in** (exploit + reverse shell) | Already alarmed: **11 minutes of warning** |
+| You press **Isolate host** (10.10.2.20 is pre-selected, riskiest first) | The web server is cut off, so the attack chain breaks | The risk falls to 0 %, the "🛡 action" marker appears, and the ground-truth strip goes back to Benign |
+
+If you do not isolate, the attack goes on to C2, lateral movement and exfiltration, and the forecast follows each stage.
+You can launch any other attack from the sidebar at any time: phishing, SSH brute force, a low-and-slow APT, a
+failed attack or a DDoS.
+
+The panels on the page:
+- **KPIs**: infiltration risk, forecast stage, ATT&CK tactic, next likely target, alerts, flows this minute.
+- **Forecast timeline**: forecast strip vs ground-truth strip, attack and response markers.
+- **64 imagined futures**: the world model's Monte-Carlo rollouts.
+- **Forecast stage per future minute.**
+- **Host graph**: inner ring = your network, coloured by risk.
+- **Alerts feed**: explanation, ATT&CK techniques and mitigations.
+- **Feature heatmap**: what the model sees, z-scores of the last 60 minutes.
+- **Flagged flows.**
+- **"How it is working right now"** strip: flows → 47 features + host graph → 30 min context → 64 × 10 min futures →
+  forecast → number of signed receipts and the Merkle root.
+
+<details><summary>More screenshots</summary>
+
+![After isolating the web server](docs/img/live_isolated.png)
+![Host graph and alerts](docs/img/live_middle.png)
+![Feature heatmap, flagged flows and pipeline](docs/img/live_bottom.png)
+</details>
+
+### Analyse a capture (offline, whole file)
 
 | Screen | What it shows |
 |---|---|
@@ -91,7 +139,24 @@ python -m sentinet benchmark -d data/test -o results
 python -m pytest -q                                      # tests (pip install pytest)
 ```
 
-## 4. Train on the public datasets
+## 4. Data
+
+### Ready-made dataset: SentiNet-Sim v1
+
+A labelled, time-ordered dataset built for forecasting. It has 48 continuous 8-hour network recordings: about 1.9 M flows,
+every flow tagged with its ATT&CK stage. They are split into train / val / test and an **unseen-APT hold-out**. It also
+includes two PCAPs with ground truth, `campaigns.csv` (when every attack stage starts and ends) and a dataset card.
+Build it in about a minute, deterministically:
+
+```bash
+python scripts/make_dataset.py              # -> dist/SentiNet-Sim-v1/ + dist/SentiNet-Sim-v1.zip (~92 MB)
+python scripts/make_dataset.py --scale 3 --hours 12   # bigger
+python -m sentinet train -d dist/SentiNet-Sim-v1/train --val dist/SentiNet-Sim-v1/val -o weights_sim
+```
+
+What is in it, how it was generated and its limits: [`docs/DATASET_CARD.md`](docs/DATASET_CARD.md).
+
+### Public datasets
 
 Put one capture per file in a folder and point `train` at it. Each file is treated as a separate time series. The
 format is detected automatically; `--format` overrides it.
@@ -191,7 +256,9 @@ about 2 s. A 441,000-packet PCAP is parsed in 2.7 s. Explaining one window with 
 ## 7. Project layout
 
 ```
-app.py                  Streamlit interface (offline)
+app.py                  Streamlit entry point (two pages)
+ui/live.py              📡 Live monitor dashboard
+ui/analyse.py           🔎 Analyse a capture (whole file, what-if, receipts)
 run_windows.bat run.sh  one-click launchers
 sentinet/
   io/                   loaders (CIC, CTU-13, UNSW-NB15, canonical CSV) and the PCAP extractor
@@ -200,11 +267,13 @@ sentinet/
   models/baseline.py    logistic regression baseline, flow anomaly scorer
   dataset.py train.py   targets, batches, training
   engine.py             forecasting, Shapley explanations, flagged flows, what-if
+  live.py               live engine + sources: simulated network, replay, live packet capture
   benchmark.py          world model vs baselines
   knowledge.py          MITRE ATT&CK / CAPEC knowledge base, CVE exposure
   ledger.py             Merkle tree + Ed25519 forecast receipts
   synth/                enterprise network + attack campaign simulator, PCAP writer
 weights/                trained model (world_model.pt, meta.json, baselines.joblib)
+scripts/make_dataset.py builds the SentiNet-Sim v1 dataset (see docs/DATASET_CARD.md)
 samples/                demo CSV, demo PCAP + its ground-truth labels, example asset list (CVE/CVSS)
 results/                benchmark tables
 docs/ARCHITECTURE.md    architecture document (2 pages)
