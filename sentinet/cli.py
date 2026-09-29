@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -26,12 +27,143 @@ def torch_threads():
     torch.set_num_threads(max(1, min(4, os.cpu_count() or 1)))
 
 
+BANNER = r"""
+   ____             _   _ _   _      _
+  / ___|  ___ _ __ | |_(_) \ | | ___| |_
+  \___ \ / _ \ '_ \| __| |  \| |/ _ \ __|
+   ___) |  __/ | | | |_| | |\  |  __/ |_
+  |____/ \___|_| |_|\__|_|_| \_|\___|\__|
+"""
+
+
+class _C:
+    """ANSI colours (turned on for Windows 10+ consoles too)."""
+    on = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+    RESET, BOLD, DIM = "\033[0m", "\033[1m", "\033[2m"
+    RED, GREEN, YELLOW, BLUE, ORANGE = "\033[91m", "\033[92m", "\033[93m", "\033[94m", "\033[38;5;208m"
+
+    @classmethod
+    def c(cls, text, *codes):
+        return "".join(codes) + str(text) + cls.RESET if cls.on else str(text)
+
+
+def _console_setup():
+    if os.name == "nt":
+        os.system("")                                     # enables ANSI escape codes in cmd.exe / PowerShell
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _free_port(port: int) -> int:
+    import socket
+    for p in range(port, port + 50):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if os.name != "nt":   # a port that was just closed (TIME_WAIT) is free to reuse
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.bind(("127.0.0.1", p))
+                return p
+            except OSError:
+                continue
+    return port
+
+
+def _check(label, detail, secs=None):
+    t = _C.c(f" ({secs:.1f}s)", _C.DIM) if secs is not None else ""
+    print(f"  {_C.c('[ok]', _C.GREEN, _C.BOLD)} {label:<17}{detail}{t}", flush=True)
+
+
+_EVENT_STYLE = {"alert": ("ALERT ", "RED"), "attack": ("ATTACK", "YELLOW"), "action": ("ACTION", "BLUE"),
+                "info": ("INFO  ", "GREEN")}
+
+
+def _relay(proc, log_path):
+    """Show SentiNet's live events; everything Streamlit prints goes to the log file."""
+    with open(log_path, "w", encoding="utf-8") as log:
+        for line in proc.stdout:
+            if line.startswith("SENTINET|"):
+                _, kind, clock, text = (line.rstrip("\n").split("|", 3) + ["", "", ""])[:4]
+                tag, col = _EVENT_STYLE.get(kind, (kind.upper()[:6], "DIM"))
+                print(f"  {_C.c(clock, _C.DIM)}  {_C.c(tag, getattr(_C, col), _C.BOLD)}  {text}", flush=True)
+            else:
+                log.write(line)
+                log.flush()
+
+
 def cmd_app(a):
-    app = ROOT / "app.py"
-    args = [sys.executable, "-m", "streamlit", "run", str(app), "--server.port", str(a.port),
-            "--browser.gatherUsageStats", "false", "--server.headless", "false" if not a.headless else "true"]
-    print("Starting SentiNet on http://localhost:%d  (Ctrl+C to stop)" % a.port)
-    raise SystemExit(subprocess.call(args, cwd=ROOT))
+    import tempfile
+    import threading
+    import time
+    import urllib.request
+    import webbrowser
+    _console_setup()
+    print(_C.c(BANNER, _C.ORANGE, _C.BOLD) + _C.c("  AI network attack forecasting  ·  world model  ·  SIH26153 (NTRO)\n", _C.BOLD))
+
+    t = time.time()
+    torch_threads()
+    from .engine import Forecaster
+    fc = Forecaster.load()
+    n = sum(p.numel() for p in fc.model.parameters())
+    _check("World model", f"{n:,} parameters · graph network + temporal Transformer + latent dynamics", time.time() - t)
+    cfg = fc.cfg
+    _check("Forecast", f"{cfg.get('samples', 64)} imagined futures x {cfg['horizon']} min ahead, every "
+                       f"{cfg['window']:.0f} s · alarm at {fc.threshold:.0%}")
+    _check("Explainability", "exact Shapley values · attention · MITRE ATT&CK / CAPEC knowledge base")
+    _check("Integrity", "every forecast in an Ed25519-signed Merkle receipt")
+    try:
+        import logging
+        import warnings
+        warnings.filterwarnings("ignore")
+        logging.getLogger("scapy").setLevel(logging.ERROR)
+        from .live import list_interfaces
+        nif = len(list_interfaces())
+    except Exception:  # noqa: BLE001
+        nif = 0
+    _check("Traffic sources", "simulated network · replay PCAP/CSV · live capture"
+           + (f" ({nif} interfaces found)" if nif else " (needs Npcap/admin rights)"))
+    _check("Privacy", "100% offline: no cloud, no external API calls")
+
+    port = _free_port(a.port)
+    url = f"http://localhost:{port}"
+    t = time.time()
+    env = dict(os.environ, SENTINET_CONSOLE="1", PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
+    args = [sys.executable, "-m", "streamlit", "run", str(ROOT / "app.py"), "--server.port", str(port),
+            "--server.headless", "true", "--browser.gatherUsageStats", "false", "--logger.level", "error"]
+    proc = subprocess.Popen(args, cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                            encoding="utf-8", errors="replace", bufsize=1)
+    log_path = Path(tempfile.gettempdir()) / "sentinet_app.log"
+    threading.Thread(target=_relay, args=(proc, log_path), daemon=True).start()
+    ready = False
+    while time.time() - t < 120 and proc.poll() is None:
+        try:
+            ready = urllib.request.urlopen(f"http://127.0.0.1:{port}/_stcore/health", timeout=2).status == 200
+        except Exception:  # noqa: BLE001
+            ready = False
+        if ready:
+            break
+        time.sleep(0.4)
+    if not ready:
+        print(_C.c("\n  The dashboard did not start. Details: ", _C.RED) + str(log_path))
+        time.sleep(0.5)
+        print(log_path.read_text(encoding="utf-8", errors="replace")[-3000:] if log_path.exists() else "")
+        proc.terminate()
+        raise SystemExit(1)
+    _check("Dashboard", _C.c(url, _C.BOLD), time.time() - t)
+    print(_C.c("\n  Live events appear below. Ctrl+C to stop.\n", _C.DIM), flush=True)
+    if not a.headless:
+        webbrowser.open(url)
+    try:
+        proc.wait()
+    except KeyboardInterrupt:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except Exception:  # noqa: BLE001
+            proc.kill()
+        print(_C.c("\n  SentiNet stopped.", _C.DIM))
 
 
 def cmd_forecast(a):

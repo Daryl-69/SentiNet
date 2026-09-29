@@ -79,15 +79,19 @@ forecasts the next 10 minutes. It has three traffic sources:
 | **Replay a capture** | Any PCAP/PCAPNG or flow CSV (CIC-IDS, CTU-13, UNSW-NB15, SentiNet) played back as if it were live, 0.5–3 minutes per second | Showing a real dataset "live" |
 | **Live capture (this computer)** | Sniffs a network interface with Scapy, builds flows and forecasts every real minute | A real network. Needs admin rights: on Windows install [Npcap](https://npcap.com) and run as Administrator; on Linux/macOS use `sudo`. Isolation is only logged as a recommendation, because a passive sensor cannot block traffic |
 
-**The 2-minute demo (Auto demo script on, speed 1 = one simulated minute per second):**
+**The demo (Auto demo script on, speed 1 = one simulated minute per second).** A timed 1:20 video script with
+voice-over is in [`docs/DEMO_VIDEO_SCRIPT.md`](docs/DEMO_VIDEO_SCRIPT.md).
+
+The terminal that started the app shows the SentiNet start-up checks and then logs every attack, alert and
+response live (Streamlit's own messages go to a log file).
 
 | Network clock | What happens | What the dashboard shows |
 |---|---|---|
-| 08:00–08:20 | Normal office traffic | Risk ≈ 0 %, everything grey |
-| 08:20 | The auto script launches a web intrusion ("✕ attack" marker). The attacker scans and probes the web server 10.10.2.20 | Stage strip turns orange (Reconnaissance); the risk curve starts to bend upward |
-| **08:47** | Still only reconnaissance | **Alarm**: 100 % infiltration within 10 minutes, forecast stage Initial Access, target 10.10.2.20. The alert shows the ATT&CK evidence and the mitigation for the expected next technique |
-| 08:58 | **The real break-in** (exploit + reverse shell) | Already alarmed: **11 minutes of warning** |
-| You press **Isolate host** (10.10.2.20 is pre-selected, riskiest first) | The web server is cut off, so the attack chain breaks | The risk falls to 0 %, the "🛡 action" marker appears, and the ground-truth strip goes back to Benign |
+| 08:00–08:10 | Normal office traffic | Risk ≈ 0 %, everything grey |
+| 08:10 | The auto script launches a web intrusion ("✕ attack" marker; the terminal logs `ATTACK`). The attacker scans and probes the web server 10.10.2.20 | Stage strip turns orange (Reconnaissance); the risk curve starts to bend upward |
+| **08:37** | Still only reconnaissance | **Alarm**: 100 % infiltration within 10 minutes, forecast stage Initial Access, target 10.10.2.20, evidence `T1595.003` wordlist scanning from the attacker's IP, and the mitigation for the expected next technique (terminal: `ALERT`) |
+| 08:48 | **The real break-in** (exploit + reverse shell) | Already alarmed: **11 minutes of warning** |
+| You press the orange **Isolate 10.10.2.20** button (the alert's target) | The web server is cut off, so the attack chain breaks (terminal: `ACTION`) | The risk falls to 0 %, the "🛡 action" marker appears, and the ground-truth strip goes back to Benign |
 
 If you do not isolate, the attack goes on to C2, lateral movement and exfiltration, and the forecast follows each stage.
 You can launch any other attack from the sidebar at any time: phishing, SSH brute force, a low-and-slow APT, a

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import numpy as np
@@ -16,9 +17,10 @@ sys.path.insert(0, str(ROOT))
 from sentinet import viz  # noqa: E402
 from sentinet.engine import Forecaster  # noqa: E402
 from sentinet.features.windows import make_internal_fn  # noqa: E402
-from sentinet.live import (CaptureSource, LiveEngine, LiveRunner, ReplaySource, SimSource, demo_schedule,  # noqa: E402
+from sentinet.live import (console, CaptureSource, LiveEngine, LiveRunner, ReplaySource, SimSource, demo_schedule,  # noqa: E402
                            list_interfaces)
 from sentinet.stages import ATTACK_TACTIC, STAGES  # noqa: E402
+from ui.livechart import live_chart  # noqa: E402
 
 ATTACKS = {"web_exploit": "Web server exploit → C2 → lateral movement → exfiltration",
            "bruteforce": "SSH brute force on the gateway → full kill chain",
@@ -58,6 +60,10 @@ def build(kind: str, **kw):
     if kind == "sim" and kw.get("demo"):
         runner.schedule = demo_schedule(eng.t)
     st.session_state["live"] = {"engine": eng, "runner": runner, "kind": kind}
+    console("info", {"sim": "live monitor started on the simulated network" + (" (auto demo script)" if kw.get("demo") else ""),
+                     "replay": f"live monitor started: replaying {Path(str(kw.get('path'))).name}",
+                     "capture": f"live monitor started: capturing on {kw.get('iface') or 'default interface'}"}[kind],
+            eng.t)
     runner.start()
 
 
@@ -72,7 +78,7 @@ with st.sidebar:
     kw = {"speed": speed}
     if mode.startswith("Simulated"):
         kw["demo"] = st.checkbox("Auto demo script", value=True,
-                                 help="20 simulated minutes of normal traffic, then a web intrusion: recon -> exploit -> C2 -> lateral -> exfil.")
+                                 help="10 simulated minutes of normal traffic, then a web intrusion: recon -> exploit -> C2 -> lateral -> exfil.")
         kw["n_ws"] = st.slider("Workstations", 10, 40, 20)
         kw["seed"] = int(st.number_input("Seed", 0, 9999, 7))
         kind = "sim"
@@ -134,7 +140,7 @@ with st.sidebar:
 st.markdown("### 📡 Live monitor: attack forecasting")
 if not controller():
     st.info("Choose a traffic source on the left and press **Start**. For a demo video, use **Simulated network** "
-            "with **Auto demo script**: normal traffic, then a web intrusion starts at ~08:20 (recon first, break-in ~40 min later). "
+            "with **Auto demo script**: normal traffic, then a web intrusion starts at ~08:10 (recon first, break-in ~40 min later). "
             "Watch the forecast rise *before* the break-in, then isolate the host and watch it fall.")
     st.markdown("""
 **How it works:** packets → flows → a network state every minute (47 features + host graph) → world model (graph
@@ -154,6 +160,7 @@ def dashboard():
     if not ctl:
         return
     eng, runner = ctl["engine"], ctl["runner"]
+    runner.last_seen = time.time()
     if runner.error:
         st.error(f"Stopped: {runner.error}")
     df = eng.table()
@@ -175,7 +182,8 @@ def dashboard():
     stage = last["stage_forecast"]
     k1, k2, k3, k4, k5, k6 = st.columns(6)
     k1.metric("Infiltration risk (next 10 min)", "warming up" if warming else f"{p:.0%}",
-              None if warming or len(df) < 2 else f"{(p - float(df.iloc[-2]['p_infiltration'])) * 100:+.0f} pts",
+              None if warming or len(df) < 2 or abs(p - float(df.iloc[-2]['p_infiltration'])) < 0.01
+              else f"{(p - float(df.iloc[-2]['p_infiltration'])) * 100:+.0f} pts",
               delta_color="inverse")
     k2.metric("Forecast stage", stage)
     k3.metric("ATT&CK", ATTACK_TACTIC[STAGES.index(stage)][0] if stage in STAGES else "-")
@@ -189,27 +197,35 @@ def dashboard():
         st.error(f"🚨 ALARM: {p:.0%} chance of infiltration within 10 minutes. Forecast stage: {stage}. "
                  f"Likely target: {top_int['host'].iloc[0] if len(top_int) else 'unknown'}.")
     internal = hosts[hosts["internal"]]["host"].tolist()
-    r1, r2, r3 = st.columns([2, 1, 3], vertical_alignment="bottom")
-    target = r1.selectbox("🛡 Respond: host to isolate (riskiest first)", internal or ["-"], key="iso_target")
-    if r2.button("Isolate host", icon=":material/block:", width="stretch", disabled=not internal):
-        eng.contain(target)
-        st.toast(f"Isolating {target}" + ("" if ctl["kind"] != "capture" else " (recommendation only)"))
-    r3.caption(("Isolated: **" + ", ".join(sorted(eng.contained)) + "**. " if eng.contained else "")
+    rec = next((al["host"] for al in eng.alerts if al.get("host") and al["host"] not in eng.contained), None)
+    rec = rec or next((h for h in internal if h not in eng.contained), None)
+    r1, r2, r3 = st.columns([1.3, 1.7, 3], vertical_alignment="center")
+    if r1.button(f"Isolate {rec}" if rec else "Isolate host", icon=":material/block:", key="iso_rec",
+                 type="primary" if rec and p >= eng.threshold and not warming else "secondary", width="stretch", disabled=not rec):
+        eng.contain(rec)
+        st.toast(f"Isolating {rec}" + ("" if ctl["kind"] != "capture" else " (recommendation only)"))
+    with r2.popover("Isolate another host", icon=":material/tune:", width="stretch"):
+        other = st.selectbox("Host (riskiest first)", [h for h in internal if h not in eng.contained] or ["-"],
+                             key="iso_target")
+        if st.button("Isolate", key="iso_other", disabled=not internal):
+            eng.contain(other)
+            st.toast(f"Isolating {other}")
+    r3.caption(("Isolated: **" + ", ".join(sorted(eng.contained)) + "**. " if eng.contained else
+                "🛡 Recommended response: the alert's target host. ")
                + ("Passive sensor: isolation is logged as a recommendation." if ctl["kind"] == "capture" else
                   "Isolation cuts the host off the network; an attack that needs it cannot continue."))
 
     a, b = st.columns([2, 1])
     with a:
         st.markdown("**Infiltration forecast timeline**")
-        st.plotly_chart(viz.live_timeline(df.tail(180), eng.threshold, getattr(eng.src, "events", [])),
-                        width="stretch", key="tl", config=PLOT_CFG)
+        live_chart(viz.live_timeline(df.tail(180), eng.threshold, getattr(eng.src, "events", [])), "tl")
     with b:
-        st.plotly_chart(viz.fan_chart(L["fan"], eng.W, height=250), width="stretch", key="fan", config=PLOT_CFG)
-        st.plotly_chart(viz.stage_bars(L["stage_future"], eng.W, height=190), width="stretch", key="stg", config=PLOT_CFG)
+        live_chart(viz.fan_chart(L["fan"], eng.W, height=250), "fan")
+        live_chart(viz.stage_bars(L["stage_future"], eng.W, height=190), "stg")
 
     a, b = st.columns([1, 1])
     with a:
-        st.plotly_chart(viz.host_graph(L["node_ips"], L["node_risk"], L["adj"], INSIDE), width="stretch", key="hg", config=PLOT_CFG)
+        live_chart(viz.host_graph(L["node_ips"], L["node_risk"], L["adj"], INSIDE), "hg")
     with b:
         st.markdown("**🔔 Alerts (with explanation and response)**")
         box = st.container(height=360)
@@ -229,7 +245,7 @@ def dashboard():
 
     a, b = st.columns([1, 1])
     with a:
-        st.plotly_chart(viz.feature_heatmap(L["z"], L["times"]), width="stretch", key="hm", config=PLOT_CFG)
+        live_chart(viz.feature_heatmap(L["z"], L["times"]), "hm")
     with b:
         st.markdown("**Flagged flows this minute** (anomaly × host risk)")
         ff = L["flagged"]

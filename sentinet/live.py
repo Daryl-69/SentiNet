@@ -15,6 +15,7 @@ when an alarm starts, and keeps a Merkle root over every forecast it has issued.
 from __future__ import annotations
 
 import math
+import os
 import threading
 import time
 from collections import deque
@@ -30,6 +31,13 @@ from .ledger import leaf_hash, merkle_root
 from .schema import finalise
 from .stages import INFILTRATION, STAGES
 from .synth.generator import Campaign, FlowBuffer, Network, _benign
+
+
+def console(kind: str, text: str, ts: float | None = None):
+    """Mirror live events to the terminal that started the app (`python -m sentinet app` shows them)."""
+    if os.environ.get("SENTINET_CONSOLE"):
+        clock = pd.to_datetime(ts, unit="s").strftime("%H:%M") if ts is not None else ""
+        print(f"SENTINET|{kind}|{clock}|{text}", flush=True)
 
 SIM_EPOCH = 1772438400.0  # 2026-03-02 08:00 UTC
 
@@ -76,6 +84,7 @@ class SimSource:
         meta["launched_at"] = at
         self.campaigns.append(meta)
         self.events.append({"ts": at, "kind": "attack", "text": f"attack launched: {template} (attacker {meta['attacker']})"})
+        console("attack", f"attack started: {template} from {meta['attacker']}", at)
         return meta
 
     def isolate(self, ip: str, at: float):
@@ -87,6 +96,7 @@ class SimSource:
             if ((later & ((d["src_ip"] == ip) | (d["dst_ip"] == ip))) & (d["stage"] > 0)).any():
                 self.pending[i] = d[~later]
                 self.events.append({"ts": at, "kind": "action", "text": f"attack chain broken: {self.campaigns[i]['template']}"})
+                console("action", f"attack chain broken: {self.campaigns[i]['template']} can no longer continue", at)
 
     def flows(self, a: float, b: float) -> pd.DataFrame:
         self._extend(b)
@@ -212,6 +222,8 @@ class LiveEngine:
         """Isolate a host. With a simulated/replayed network the host's traffic really stops, and it also leaves
         the network state the model forecasts on (a quarantined host is no longer part of the live network).
         A passive live capture cannot enforce it, so there it stays a recommendation."""
+        console("action", f"host isolated: {ip}" + (" (recommendation only: passive sensor)" if self.src.kind == "capture"
+                                                     else ""), self.t)
         self.src.isolate(ip, self.t)
         if self.src.kind != "capture":
             self.contained.add(ip)
@@ -272,11 +284,16 @@ class LiveEngine:
                 ex = res.explain(last)
                 alert = {"time": self.rows[-1]["time"], "p": float(self.rows[-1]["p_infiltration"]),
                          "stage": self.rows[-1]["stage_forecast"], "narrative": ex["narrative"],
-                         "techniques": ex.get("techniques_observed", [])[:3],
+                         "techniques": (ex.get("techniques_observed") or
+                                        self._context_techniques(allf, wd, r, last, t_start))[:3],
                          "expected": ex.get("techniques_expected", [])[:3],
                          "host": next((h["host"] for h in ex.get("hosts", []) if h.get("internal")), None),
                          "groups": ex["groups"][:4]}
                 self.alerts.insert(0, alert)
+                tech = alert["techniques"][0] if alert["techniques"] else None
+                console("alert", f"{alert['p']:.0%} infiltration within {len(r['p_by_k'][last])} min · forecast "
+                                 f"{alert['stage']}" + (f" · target {alert['host']}" if alert["host"] else "")
+                        + (f" · {tech['technique']} {tech['name']}" if tech else ""), self.t - self.W)
             zs = pd.DataFrame(r["seq"].X[-60:], columns=FEATURE_NAMES)[KEY_FEATURES]
             self.latest = {
                 "p_by_k": r["p_by_k"][last], "fan": fan, "stage_future": r["stage_future"][last],
@@ -288,6 +305,26 @@ class LiveEngine:
             }
         self.step_ms = (time.time() - t_first) * 1000
         return added
+
+    def _context_techniques(self, flows, wd, r, last, t_start, n=30):
+        """ATT&CK evidence from the minutes the model looked at (the alarm minute itself may be quiet). Only
+        techniques of the stage the model believed each minute was in count, most persistent first, so everyday
+        traffic that happens to match a rule (office SMB, downloads) is not reported as the attack."""
+        from .knowledge import observed
+        seen, count = {}, {}
+        for t in range(max(0, last - n + 1), last + 1):
+            f = flows[wd.flow_window == t]
+            stage_t = STAGES[int(np.argmax(r["stage_now"][t]))]
+            if not len(f) or stage_t == "Benign":
+                continue
+            raw = dict(zip(FEATURE_NAMES, wd.X[t].tolist()))
+            z = dict(zip(FEATURE_NAMES, r["seq"].X[t].tolist()))
+            when = pd.to_datetime(t_start + t * self.W, unit="s").strftime("%H:%M")
+            for o in observed(raw, f, self.inside, z):
+                if o["stage"] == stage_t:
+                    seen[o["technique"]] = dict(o, evidence=f"{when}: {o['evidence']}")
+                    count[o["technique"]] = count.get(o["technique"], 0) + 1
+        return sorted(seen.values(), key=lambda o: -count[o["technique"]])
 
     def _store_empty(self, t):
         with self.lock:
@@ -311,6 +348,8 @@ class LiveRunner:
         self._thread = None
         self._stop = threading.Event()
         self.schedule: list[tuple[float, str, str]] = []   # (sim time, kind, arg)
+        self.last_seen = time.time()                        # the dashboard updates this on every refresh
+        self.idle_pause = 15.0                              # sim/replay pause when nobody is watching
 
     def start(self):
         if self._thread and self._thread.is_alive():
@@ -334,7 +373,8 @@ class LiveRunner:
         acc = 0.0
         while not self._stop.is_set():
             t0 = time.time()
-            if self.running:
+            idle = self.engine.src.kind != "capture" and time.time() - self.last_seen > self.idle_pause
+            if self.running and not idle:
                 try:
                     self._run_schedule()
                     if self.engine.src.kind == "capture":
@@ -360,5 +400,5 @@ class LiveRunner:
 
 
 def demo_schedule(t0: float) -> list[tuple[float, str, str]]:
-    """Hands-free demo: 20 min of normal traffic, then a web intrusion (recon -> exploit -> C2 -> lateral -> exfil)."""
-    return [(t0 + 20 * 60, "attack", "web_exploit")]
+    """Hands-free demo: 10 min of normal traffic, then a web intrusion (recon -> exploit -> C2 -> lateral -> exfil)."""
+    return [(t0 + 10 * 60, "attack", "web_exploit")]

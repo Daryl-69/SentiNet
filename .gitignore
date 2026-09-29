@@ -9,3 +9,4 @@ report/
 .DS_Store
 ppt/build/node_modules/
 dist/
+static/*.js

@@ -10,10 +10,16 @@ import streamlit as st
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
+
 st.set_page_config(page_title="SentiNet · Attack Forecasting", page_icon="🛡️", layout="wide")
 st.markdown("""<style>
-.block-container{padding-top:3.2rem}
+.block-container{padding-top:2.2rem}
 div[data-testid="stMetricValue"]{font-size:1.55rem}
+/* no fading or "running" indicators while the live page refreshes */
+[data-stale="true"], .stale-element{opacity:1 !important; transition:none !important; filter:none !important}
+[data-testid="stStatusWidget"], [data-testid="stDecoration"], [data-testid="stMainMenu"],
+[data-testid="stAppDeployButton"], [data-testid="stToolbar"] > div:not(:has([data-testid="stExpandSidebarButton"])){display:none !important}
+header[data-testid="stHeader"]{background:transparent}
 </style>""", unsafe_allow_html=True)
 
 pages = [

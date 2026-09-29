@@ -121,7 +121,7 @@ def live_timeline(df: pd.DataFrame, threshold: float, events: list | None = None
                 m = df[col] == st
                 if m.any():
                     fig.add_trace(go.Bar(x=t[m], y=np.ones(int(m.sum())), marker_color=_stage_color(st), width=w_ms,
-                                         name=st, legendgroup=st, showlegend=(r == 2),
+                                         marker_line_width=0, name=st, legendgroup=st, showlegend=(r == 2),
                                          hovertemplate=f"{st}<extra></extra>"), r, 1)
             fig.update_yaxes(title_text="forecast" if r == 2 else "truth", title_font=dict(size=10),
                              showticklabels=False, showgrid=False, range=[0, 1], row=r, col=1)
@@ -133,6 +133,7 @@ def live_timeline(df: pd.DataFrame, threshold: float, events: list | None = None
             fig.add_vline(x=ts, line=dict(color=color, width=1.2, dash="dot"))
             fig.add_annotation(x=ts, y=1.05, yref="y", text="⚔ attack" if e["kind"] == "attack" else "🛡 action",
                                showarrow=False, font=dict(size=10, color=color))
+    fig.update_xaxes(showgrid=False)
     fig.update_yaxes(range=[0, 1.1], tickformat=".0%", gridcolor="#eef0f3", row=1, col=1)
     fig.update_layout(height=height, margin=dict(l=10, r=10, t=10, b=10), barmode="stack", bargap=0, plot_bgcolor="white",
                       legend=dict(orientation="h", y=-0.18, font=dict(size=10)), uirevision="live")

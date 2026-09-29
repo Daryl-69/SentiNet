@@ -19,5 +19,4 @@ if ! cmp -s requirements.txt .venv/installed.txt; then   # first run, or require
   .venv/bin/python -m pip install --upgrade -r requirements.txt
   cp requirements.txt .venv/installed.txt
 fi
-echo "[SentiNet] starting the app (default http://localhost:8501, Ctrl+C to stop)"
 exec .venv/bin/python -m sentinet app "$@"

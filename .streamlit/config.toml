@@ -3,7 +3,17 @@ gatherUsageStats = false
 
 [server]
 maxUploadSize = 2000
+# serves ./static (a local copy of plotly.js for the flicker-free live charts; the app stays offline)
+enableStaticServing = true
 
 [theme]
 base = "light"
 primaryColor = "#c2410c"
+
+[client]
+# hide Streamlit's Deploy button and developer menu
+toolbarMode = "viewer"
+showErrorDetails = true
+
+[runner]
+fastReruns = true

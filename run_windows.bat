@@ -4,6 +4,8 @@ REM First run: creates a virtual environment and installs dependencies (needs in
 REM Later runs start the app straight away and work fully offline.
 setlocal
 cd /d "%~dp0"
+chcp 65001 >nul
+title SentiNet
 
 set PY=
 where py >nul 2>nul && set PY=py -3
@@ -22,7 +24,6 @@ if errorlevel 1 (
   ".venv\Scripts\python.exe" -m pip install --upgrade -r requirements.txt || goto failed
   copy /y requirements.txt ".venv\installed.txt" >nul
 )
-echo [SentiNet] Starting on http://localhost:8501  (close this window to stop)
 ".venv\Scripts\python.exe" -m sentinet app
 goto end
 

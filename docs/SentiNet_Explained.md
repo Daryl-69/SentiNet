@@ -70,17 +70,17 @@ flowchart LR
 ![Live monitor](img/live_top.png)
 
 Start the app. It opens on **📡 Live monitor**. Keep **Simulated network** + **Auto demo script** on and press
-**Start**. One simulated minute passes every second, so the whole story takes about 90 seconds:
+**Start**. One simulated minute passes every second, so the whole story takes about a minute:
 
-1. **08:00–08:20 · normal office traffic.** Risk ≈ 0 %.
-2. **08:20 · an attacker starts scanning** the company's web server (red "✕ attack" marker). The stage strip turns
+1. **08:00–08:10 · normal office traffic.** Risk ≈ 0 %.
+2. **08:10 · an attacker starts scanning** the company's web server (red "✕ attack" marker). The stage strip turns
    orange (Reconnaissance), and the risk curve starts to bend upward as the scanning looks more and more like the
    run-up to a break-in.
-3. **08:47 · ALARM.** 100 % chance of infiltration within 10 minutes, forecast stage *Initial Access*, likely target
+3. **08:37 · ALARM.** 100 % chance of infiltration within 10 minutes, forecast stage *Initial Access*, likely target
    10.10.2.20 (the web server). The alert explains itself: ATT&CK evidence, the technique expected next, and the
    mitigation for it.
-4. **08:58 · the real break-in** happens (look at the ground-truth strip). **We warned 11 minutes earlier.**
-5. **Press "Isolate host".** The riskiest host is already selected. The web server is cut off, the attack chain
+4. **08:48 · the real break-in** happens (look at the ground-truth strip). **We warned 11 minutes earlier.**
+5. **Press the orange "Isolate 10.10.2.20" button** (the alert's target). The web server is cut off, the attack chain
    breaks, and the risk falls to 0 % (blue "🛡 action" marker). *Forecast → explanation → action → result, live.*
 
 ![After isolation](img/live_isolated.png)
@@ -334,7 +334,7 @@ For the command line, see the [README](../README.md).
 
 ## 12. What is left for the team
 
-- [ ] **Record the 2-minute demo video** (story: section 4.1, a screen recording of the live dashboard). Put the link on slide 6 of the deck (`ppt/build/deck.js` →
+- [ ] **Record the 2-minute demo video** (follow [`DEMO_VIDEO_SCRIPT.md`](DEMO_VIDEO_SCRIPT.md): a timed 1:20 script, terminal → dashboard → terminal). Put the link on slide 6 of the deck (`ppt/build/deck.js` →
       "Demo Video") and rebuild, or edit the .pptx directly.
 - [ ] **Train on one real dataset** (CIC-IDS2017 "GeneratedLabelledFlows" or CTU-13) and add its benchmark next to the
       simulator results.
@@ -353,6 +353,7 @@ For the command line, see the [README](../README.md).
 | `ppt/SentiNet_SIH26153.pptx` / `.pdf` | The idea-submission deck |
 | `app.py`, `ui/live.py`, `ui/analyse.py` | The web app: live dashboard + whole-capture analysis |
 | `sentinet/live.py` | Live engine: simulated network, replay, real packet capture |
+| `docs/DEMO_VIDEO_SCRIPT.md` | The 1:20 demo-video script |
 | `scripts/make_dataset.py`, `docs/DATASET_CARD.md` | The SentiNet-Sim v1 dataset builder and its card |
 | `sentinet/` | All the code: loaders, features, model, engine, knowledge base, ledger, simulator |
 | `weights/` | The trained model |
