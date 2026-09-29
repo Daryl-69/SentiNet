@@ -14,11 +14,13 @@ if not exist ".venv\Scripts\python.exe" (
   echo [SentiNet] Creating a virtual environment in .venv ...
   %PY% -m venv .venv || goto nopython
 )
-if not exist ".venv\installed.txt" (
-  echo [SentiNet] Installing dependencies - first run only, about 5 minutes ...
+REM (re)install when requirements.txt changed since the last install
+fc /b requirements.txt ".venv\installed.txt" >nul 2>nul
+if errorlevel 1 (
+  echo [SentiNet] Installing dependencies - first run or after an update, about 5 minutes ...
   ".venv\Scripts\python.exe" -m pip install --upgrade pip
-  ".venv\Scripts\python.exe" -m pip install -r requirements.txt || goto failed
-  echo ok> ".venv\installed.txt"
+  ".venv\Scripts\python.exe" -m pip install --upgrade -r requirements.txt || goto failed
+  copy /y requirements.txt ".venv\installed.txt" >nul
 )
 echo [SentiNet] Starting on http://localhost:8501  (close this window to stop)
 ".venv\Scripts\python.exe" -m sentinet app

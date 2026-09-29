@@ -9,15 +9,15 @@ if [ ! -x .venv/bin/python ]; then
   echo "[SentiNet] creating virtual environment in .venv"
   "$PY" -m venv .venv
 fi
-if [ ! -f .venv/installed.txt ]; then
-  echo "[SentiNet] installing dependencies (first run only)"
+if ! cmp -s requirements.txt .venv/installed.txt; then   # first run, or requirements changed
+  echo "[SentiNet] installing dependencies (first run or after an update)"
   .venv/bin/python -m pip install --upgrade pip
   if [ "$(uname -s)" = "Linux" ]; then
     # CPU-only PyTorch: ~200 MB instead of several GB of CUDA libraries
     .venv/bin/python -m pip install torch --index-url https://download.pytorch.org/whl/cpu || true
   fi
-  .venv/bin/python -m pip install -r requirements.txt
-  echo ok > .venv/installed.txt
+  .venv/bin/python -m pip install --upgrade -r requirements.txt
+  cp requirements.txt .venv/installed.txt
 fi
 echo "[SentiNet] starting the app (default http://localhost:8501, Ctrl+C to stop)"
 exec .venv/bin/python -m sentinet app "$@"
