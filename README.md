@@ -1,4 +1,7 @@
-# SentiNet
+**Our TEAM ID IS 149775**
+
+
+# ARGUS
 
 **A world model that forecasts network attacks from traffic, before the attacker finishes the kill chain.**
 Smart India Hackathon 2026 · Problem statement **SIH26153**, *AI based Network Attack Forecasting from Network Traffic Data* (NTRO) ·
